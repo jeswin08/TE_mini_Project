@@ -1,0 +1,34 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+env/
+
+# Environment variables
+.env
+
+# Database
+finsentinel.db
+*.db
+
+# Dataset (too large for GitHub)
+creditcard.csv
+*.csv
+
+# Trained ML model files
+model/fraud_model.pkl
+model/scaler.pkl
+*.pkl
+
+# VS Code
+.vscode/
+
+# Mac system files
+.DS_Store
+
+# Logs
+*.log

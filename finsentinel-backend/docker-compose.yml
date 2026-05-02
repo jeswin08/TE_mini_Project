@@ -1,0 +1,73 @@
+version: '3.9'
+
+services:
+  api:
+    build: .
+    container_name: finsentinel-api
+    ports:
+      - "5005:5005"
+    environment:
+      - FLASK_DEBUG=false
+      - PORT=5005
+      - KAFKA_ENABLED=true
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_TOPIC_TRANSACTIONS=finsentinel.transactions
+      - DATABASE_URL=sqlite:////app/finsentinel.db
+      - JWT_SECRET_KEY=replace-me-in-production
+      - AUTH_USERNAME=admin
+      - AUTH_PASSWORD=admin123
+    volumes:
+      - ./:/app
+    depends_on:
+      - kafka
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: finsentinel-kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+    ports:
+      - "9092:9092"
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: finsentinel-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  consumer:
+    build: .
+    container_name: finsentinel-consumer
+    command: ["python3", "streaming/kafka_consumer.py"]
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - KAFKA_TOPIC_TRANSACTIONS=finsentinel.transactions
+      - KAFKA_ENABLED=true
+      - DATABASE_URL=sqlite:////app/finsentinel.db
+      - JWT_SECRET_KEY=replace-me-in-production
+    volumes:
+      - ./:/app
+    depends_on:
+      - kafka
+
+  retrainer:
+    build: .
+    container_name: finsentinel-retrainer
+    command: ["python3", "training/retrain_pipeline.py"]
+    environment:
+      - MODEL_RETRAIN_INTERVAL_SECONDS=3600
+      - DATABASE_URL=sqlite:////app/finsentinel.db
+    volumes:
+      - ./:/app
+    depends_on:
+      - api
